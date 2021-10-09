@@ -14,13 +14,14 @@ class BillingService(
     private val dal: AntaeusDal,
     private val currencyConverter: CurrencyConverter
 ) {
-        /**
+    /**
      * Try to charge `invoice`.
      *
      * @return The result invoice. It will have its status updated
-     * either to `PENDING` or `FAILED`, depending on the outcome
+     * either to `PAID`, `PAYMENT_FAILED` or`INCONSISTENT_DATA`, depending on the outcome
      * of the operation.
      */
+    @Throws(NetworkException::class)
     fun charge(invoice: Invoice): Invoice {
         /**
          * Here we catch all exceptions. Since we have all

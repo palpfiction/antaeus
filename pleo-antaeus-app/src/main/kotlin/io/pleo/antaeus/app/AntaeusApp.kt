@@ -9,6 +9,7 @@ package io.pleo.antaeus.app
 
 import getCurrencyConverter
 import getPaymentProvider
+import io.pleo.antaeus.core.scheduling.ScheduledTasks
 import io.pleo.antaeus.core.services.BillingService
 import io.pleo.antaeus.core.services.CustomerService
 import io.pleo.antaeus.core.services.InvoiceService
@@ -72,4 +73,6 @@ fun main() {
         invoiceService = invoiceService,
         customerService = customerService
     ).run()
+
+    ScheduledTasks(billingService, dal).start()
 }
