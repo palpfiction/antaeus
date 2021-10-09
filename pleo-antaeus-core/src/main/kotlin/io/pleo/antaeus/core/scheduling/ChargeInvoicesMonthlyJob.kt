@@ -26,12 +26,13 @@ class ChargeInvoicesMonthlyJob(
 
     @Throws(MissingDependenciesException::class)
     override fun execute(context: JobExecutionContext?) {
+        logger.info { "Launched job: ${context?.jobDetail?.key}" }
         if (billingService == null || dal == null) throw MissingDependenciesException()
 
         val pendingInvoices = dal!!.fetchInvoicesByStatus(InvoiceStatus.PENDING)
         if (pendingInvoices.isEmpty()) return
 
-        val chunkSize = (pendingInvoices.size / MAX_PROCESSES).coerceAtLeast(pendingInvoices.size)
+        val chunkSize = computeChunkSize(pendingInvoices.size)
 
         runBlocking {
             pendingInvoices.chunked(chunkSize).forEach {
@@ -42,6 +43,15 @@ class ChargeInvoicesMonthlyJob(
                 }
             }
         }
+
+        logger.info { "Finished job: ${context?.jobDetail?.key}" }
+    }
+
+    private fun computeChunkSize(size: Int): Int {
+        val chunkSize = size / MAX_PROCESSES
+        if (chunkSize == 0) return size
+
+        return chunkSize
     }
 
     private suspend fun attemptPayment(invoice: Invoice, retries: Int = 0) {
