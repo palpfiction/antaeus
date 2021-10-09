@@ -46,8 +46,7 @@ class ChargeInvoicesMonthlyJob(
 
     private suspend fun attemptPayment(invoice: Invoice, retries: Int = 0) {
         try {
-            val chargedInvoice = billingService!!.charge(invoice)
-            dal!!.updateInvoice(chargedInvoice)
+            billingService!!.charge(invoice)
         } catch (networkException: NetworkException) {
             if (retries == MAX_RETRIES) return
             delay(1000)

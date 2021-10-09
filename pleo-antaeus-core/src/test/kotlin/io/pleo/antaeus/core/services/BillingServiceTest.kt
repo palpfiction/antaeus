@@ -2,6 +2,7 @@ package io.pleo.antaeus.core.services
 
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import io.pleo.antaeus.core.exceptions.NetworkException
 import io.pleo.antaeus.core.external.CurrencyConverter
 import io.pleo.antaeus.core.external.PaymentProvider
@@ -27,15 +28,17 @@ class BillingServiceTest {
 
 
     @Test
-    fun `If payment is successful, it should return an invoice with status PAID`() {
+    fun `If payment is successful, it should return an invoice with status PAID and update invoice in database`() {
         val expected =
             Invoice(111, EXISTENT_CUSTOMER_ID, Money(BigDecimal.valueOf(140), Currency.EUR), InvoiceStatus.PAID)
         val invoice =
             Invoice(111, EXISTENT_CUSTOMER_ID, Money(BigDecimal.valueOf(140), Currency.EUR), InvoiceStatus.PENDING)
 
         every { paymentProvider.charge(invoice) } returns true
+        every { dal.updateInvoice(expected) } returns expected
 
         assertEquals(expected, billingService.charge(invoice))
+        verify { dal.updateInvoice(expected) }
     }
 
     @Test
@@ -50,8 +53,11 @@ class BillingServiceTest {
             Invoice(111, EXISTENT_CUSTOMER_ID, Money(BigDecimal.valueOf(140), Currency.EUR), InvoiceStatus.PENDING)
 
         every { paymentProvider.charge(invoice) } returns false
+        every { dal.updateInvoice(expected) } returns expected
 
         assertEquals(expected, billingService.charge(invoice))
+        verify { dal.updateInvoice(expected) }
+
     }
 
     @Test
@@ -65,7 +71,11 @@ class BillingServiceTest {
         val invoice =
             Invoice(111, NON_EXISTENT_CUSTOMER_ID, Money(BigDecimal.valueOf(140), Currency.EUR), InvoiceStatus.PENDING)
 
+        every { dal.updateInvoice(expected) } returns expected
+
         assertEquals(expected, billingService.charge(invoice))
+        verify { dal.updateInvoice(expected) }
+
     }
 
     @Test
@@ -97,10 +107,13 @@ class BillingServiceTest {
             )
         } returns true
 
+        every { dal.updateInvoice(expected) } returns expected
+
         val invoice =
             Invoice(111, EXISTENT_CUSTOMER_ID, Money(BigDecimal.valueOf(1041.78), Currency.DKK), InvoiceStatus.PENDING)
 
         assertEquals(expected, billingService.charge(invoice))
+        verify { dal.updateInvoice(expected) }
     }
 
     @Test
