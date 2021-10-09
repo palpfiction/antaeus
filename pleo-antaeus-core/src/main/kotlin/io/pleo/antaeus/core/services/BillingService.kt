@@ -1,5 +1,6 @@
 package io.pleo.antaeus.core.services
 
+import io.pleo.antaeus.core.events.*
 import io.pleo.antaeus.core.exceptions.CurrencyMismatchException
 import io.pleo.antaeus.core.exceptions.CustomerNotFoundException
 import io.pleo.antaeus.core.exceptions.NetworkException
@@ -13,7 +14,8 @@ import io.pleo.antaeus.models.InvoiceStatus
 class BillingService(
     private val paymentProvider: PaymentProvider,
     private val dal: AntaeusDal,
-    private val currencyConverter: CurrencyConverter
+    private val currencyConverter: CurrencyConverter,
+    private val eventHandler: EventHandler
 ) {
     /**
      * Try to charge `invoice`.
@@ -30,9 +32,14 @@ class BillingService(
          * sense not to happily send every request to the payment provider,
          * only the ones we are sure could be successful (except for network errors)
          */
+        val customer = dal.fetchCustomer(invoice.customerId)
+
         try {
-            val customer = dal.fetchCustomer(invoice.customerId)
-                ?: return updateInvoice(updateInvoiceStatus(invoice, InvoiceStatus.INCONSISTENT_DATA))
+
+            if (customer == null) {
+                eventHandler.handle(NonExistentCustomer(invoice))
+                return updateInvoice(updateInvoiceStatus(invoice, InvoiceStatus.INCONSISTENT_DATA))
+            }
 
             if (customer.currency != invoice.amount.currency) {
                 val money = currencyConverter.convert(invoice.amount, customer.currency)
@@ -41,10 +48,12 @@ class BillingService(
 
             return attemptToCharge(invoice)
         } catch (customerNotFound: CustomerNotFoundException) {
+            eventHandler.handle(NonExistentCustomer(invoice))
             return updateInvoice(updateInvoiceStatus(invoice, InvoiceStatus.INCONSISTENT_DATA))
         } catch (currencyMismatch: CurrencyMismatchException) {
             // Inconsistent data because if this happens, it means we were not
             // able to convert the currency, so manual changes must be made
+            eventHandler.handle(UnableToConvertCurrency(invoice, customer!!))
             return updateInvoice(updateInvoiceStatus(invoice, InvoiceStatus.INCONSISTENT_DATA))
         } catch (networkProblem: NetworkException) {
             // explicitly rethrow it, for maintainability
@@ -61,6 +70,8 @@ class BillingService(
             true -> updateInvoiceStatus(invoice, InvoiceStatus.PAID)
             false -> updateInvoiceStatus(invoice, InvoiceStatus.PAYMENT_FAILED)
         }
+
+        eventHandler.handle(PaymentProcessed(result))
 
         return updateInvoice(result)
     }

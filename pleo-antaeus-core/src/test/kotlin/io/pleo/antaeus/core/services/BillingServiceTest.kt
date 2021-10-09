@@ -3,6 +3,7 @@ package io.pleo.antaeus.core.services
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.pleo.antaeus.core.events.EventHandler
 import io.pleo.antaeus.core.exceptions.NetworkException
 import io.pleo.antaeus.core.external.CurrencyConverter
 import io.pleo.antaeus.core.external.PaymentProvider
@@ -24,7 +25,8 @@ class BillingServiceTest {
         every { fetchCustomer(NON_EXISTENT_CUSTOMER_ID) } returns null
     }
     private val currencyConverter = mockk<CurrencyConverter>()
-    private val billingService = BillingService(paymentProvider, dal, currencyConverter)
+    private val eventHandler = mockk<EventHandler>(relaxed = true)
+    private val billingService = BillingService(paymentProvider, dal, currencyConverter, eventHandler)
 
 
     @Test

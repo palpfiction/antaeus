@@ -8,8 +8,9 @@
 package io.pleo.antaeus.app
 
 import getCurrencyConverter
+import getEventHandler
 import getPaymentProvider
-import io.pleo.antaeus.core.scheduling.ScheduledTasks
+import io.pleo.antaeus.core.scheduling.JobScheduler
 import io.pleo.antaeus.core.services.BillingService
 import io.pleo.antaeus.core.services.CustomerService
 import io.pleo.antaeus.core.services.InvoiceService
@@ -60,19 +61,22 @@ fun main() {
     // Get third parties
     val paymentProvider = getPaymentProvider()
     val currencyConverter = getCurrencyConverter()
+    val eventHandler = getEventHandler()
 
     // Create core services
     val invoiceService = InvoiceService(dal = dal)
     val customerService = CustomerService(dal = dal)
 
     // This is _your_ billing service to be included where you see fit
-    val billingService = BillingService(paymentProvider, dal, currencyConverter)
+    val billingService = BillingService(paymentProvider, dal, currencyConverter, eventHandler)
+
+    val jobScheduler = JobScheduler(billingService, dal)
+    jobScheduler.start()
 
     // Create REST web service
     AntaeusRest(
         invoiceService = invoiceService,
-        customerService = customerService
+        customerService = customerService,
+        jobScheduler = jobScheduler
     ).run()
-
-    ScheduledTasks(billingService, dal).start()
 }
