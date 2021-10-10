@@ -26,12 +26,6 @@ class BillingService(
      */
     @Throws(NetworkException::class, UnableToUpdateInvoiceException::class)
     fun charge(invoice: Invoice): Invoice {
-        /**
-         * Here we catch all exceptions. Since we have all
-         * information right here (customer, its currency) it makes
-         * sense not to happily send every request to the payment provider,
-         * only the ones we are sure could be successful (except for network errors)
-         */
         val customer = dal.fetchCustomer(invoice.customerId)
 
         try {
